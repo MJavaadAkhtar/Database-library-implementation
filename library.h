@@ -5,9 +5,11 @@ typedef const char* V;
 typedef std::vector<V> Record;
 
 typedef struct {
-    void *data;
+    std::vector<Record> *data;
     int page_size;
     int slot_size;
+    int slot_used;
+    
 } Page;
 
 //The Heap File
@@ -30,7 +32,7 @@ class RecordIterator {
     RecordIterator(Heapfile *heapfile);
     Record next();
     bool hasNext();
-}
+};
 
 /**
  * Initalize a heapfile to use the file and page size given.
