@@ -83,3 +83,79 @@ void read_fixed_len_page(Page *page, int slot, Record *r){
 int fixed_len_page_capacity(Page *page){
     return page->page_size/page->slot_size;
 }
+
+/**
+ * Initalize a heapfile to use the file and page size given.
+ */
+void init_heapfile(Heapfile *heapfile, int page_size, FILE *file){
+    heapfile -> page_size = page_size;
+    headfile -> file_ptr = file;
+
+    //We know the first 8 bytes is the offset to the next page
+    int offset_dir = 0;
+    fwrite(&offset_dir, sizeof(int), 1, file);
+
+    // Filling the rest of the directory with emptines
+    int temp = ((page_size - sizeof(int)) / sizeof(DirectoryEntry));
+    for (int i = 1; i <= temp; ++i){
+        fwrite(&i, sizeof(int), 1, file);
+        fwrite(&page_size, sizeof(int),1,file);
+    }
+    fflush(file);
+}
+
+/**
+ * Deserializes `size` bytes from the buffer, `buf`, and
+ * stores the record in `record`.
+ */
+void fixed_len_read(void *buf, int size, Record *record){
+    int i = 0;
+    while(i< size/ATTRIBUTE_SIZE){
+        char *attr = new char(ATTRIBUTE_SIZE+1);
+        strncpy(attr, buf + (i*ATTRIBUTE_SIZE), ATTRIBUTE_SIZE);
+
+        attr[ATTRIBUTE_SIZE] - '\0';
+
+        if (strlen(attr) > 0){
+            record -> push_back(attr);
+        }
+        ++i;
+    }
+}
+
+/**
+ * Write a record into a given slot.
+ */
+void write_fixed_len_page(Page *page, int slot, Record *r){
+    int temp = !r->empty() && page->data->at(slot).empty();
+    if (temp){
+        page->used_slots++;
+    }
+    page->data->at(slot) = *r;
+}
+
+/**
+ * Write a page from memory to disk
+ */
+void write_page(Page *page, Heapfile *heapfile, PageID pid){
+    fseek(heapfile->file_ptr, pid *heapfeal->page_size, SEEK_SET);
+    char *temp = new char[heapfile->page_size];
+    temp[0] = '\0';
+    int i = 0;
+    while(i<fixed_len_page_capacity(page)){
+        fixed_len_write(&(page->data)->at(i), temp);
+        ++i;
+    }
+    fwrite(temp, heapfile->page_size,1 , heapfile->file_ptr);
+    delete buf;
+
+    int dir_no = get_directory_number(pid, heapfile->page_size);
+    go_to_directory_by_directory_number(dir_no, heapfile->file_ptr);
+    if(search_directory(heapfile, pid)){
+        throw;
+    }
+    
+    int space = heapfile->page_size - (page->used_slots * NUM_ATTRIBUTES * ATTRIBUTE_SIZE);
+    fwrite(&space, sizeof(int), 1, heapfile->file_ptr);
+    fflush(heapfile->file_ptr);
+}
