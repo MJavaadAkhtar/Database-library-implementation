@@ -1,63 +1,83 @@
+#include <stdlib.h>
 #include <iostream>
 #include <fstream>
-#include <sstream>
-#include <istream>
+#include <string.h>
 #include <sys/timeb.h>
 #include "library.h"
-#include <string>
 
-int main(int argc, const char * argv[]){
-    if (argc<3){
-        std::cout << "USAGE: read_fixed_len_page <page_file> <page_size>";
+int main(int argc, char** argv) {
+    if (argc < 3) {
+        std::cout << "Error, usage must be:\n";
+        std::cout << "./read_fixed_len_page <page_file> <page_size>\n";
         return 1;
     }
-    int record_no, size_page, page_no;
 
-    std::string filename(argv[1]);
-    size_page = std::stoi(argv[2]);
+    bool show_output = true;
+    if (argc == 4 && strcmp(argv[3], "--benchmark-mode") == 0) {
+        show_output = false;
+    }
 
-    // start timer
+    std::ifstream page_file;
+    page_file.open(argv[1]);
+    if (!page_file) {
+        std::cout << "Error, could not find file " << argv[1] << "\n";
+        return 1;
+    }
+
+    std::ofstream null_out("/dev/null");
+
+    int page_size = atoi(argv[2]);
+
+    int record_size = NUM_ATTRIBUTES * ATTRIBUTE_SIZE;
+
+    Page page;
+
     struct timeb t;
     ftime(&t);
-    unsigned long start_ms = t.time * 1000 + t.millitm;
+    long start_time_in_ms = (t.time * 1000) + t.millitm;
 
-    std::ifstream filePage;
-    filePage.open(filename, std::ios::in|std::ios::binary);
+    char buf[page_size];
+    while (page_file.read(buf, page_size)) {
+        // clear the page
+        init_fixed_len_page(&page, page_size, record_size);
 
-    FILE * file = fopen("tuples2.csv", "w");
+        for (int i = 0; i < fixed_len_page_capacity(&page); ++i) {
+            Record *r = new Record;
 
-    while(!filePage.eof()){
-        Page page;
+            fixed_len_read(buf + (i * record_size), record_size, r);
 
-        init_fixed_len_page(&page, size_page, 1000);
+            write_fixed_len_page(&page, i, r);
 
-        filePage.read((char *) page.data, size_page);
-
-        int i=0;
-        while(i!=fixed_len_page_capacity(&page)){
-            Record record;
-            read_fixed_len_page(&page, i, &record);
-            unsigned int j=0;
-            while(j != record.size()){
-                std::cout << record.at(j);
-                if (j!=record.size() - 1){
-                    std::cout << ",";
+            // print entries to /dev/null
+            for (Record::iterator it = r->begin(); it != r->end(); ++it) {
+                if (it + 1 == r->end()) {
+                    if (show_output) {
+                        std::cout << *it;
+                    } else {
+                        null_out << *it;
+                    }
+                } else {
+                    if (show_output) {
+                        std::cout << *it << ",";
+                    } else {
+                        null_out << *it << ",";
+                    }
                 }
-                j++;
             }
-            fputs("\n", file);
-            record_no++;
+            if (show_output) {
+                std::cout << "\n";
+            } else {
+                null_out << "\n";
+            }
         }
-        page_no++;
     }
-    fclose(file);
-    filePage.close();
-    ftime(&t);
-    unsigned long stop_ms = t.time * 1000 + t.millitm;
 
-    std::cout << "Number of Records: " << record_no << "\n";
-    std::cout << "Number of Pages: " << page_no << "\n";
-    std::cout << "Time: " << stop_ms - start_ms << " milliseconds\n";
+    ftime(&t);
+    long total_run_time = ((t.time * 1000) + t.millitm) - start_time_in_ms;
+
+    page_file.close();
+
+    std::cout << "TOTAL TIME: " << total_run_time << " milliseconds\n";
 
     return 0;
 }

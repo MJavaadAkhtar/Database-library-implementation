@@ -1,51 +1,40 @@
 #include <algorithm>
-#include <stdlib.h>
-#include <iostream>
 #include <fstream>
-#include <string.h>
-#include <sys/timeb.h>
+#include <iostream>
+#include <stdlib.h>
 #include "library.h"
 
 int main(int argc, char** argv) {
     if (argc < 4) {
         std::cout << "Error, usage must be:\n";
-        std::cout << "./write_fixed_len_pages <csv_file> <page_file> <page_size>\n";
+        std::cout << "./insert <heapfile> <csv_file> <page_size>\n";
         return 1;
     }
 
-    bool show_output = true;
-    if (argc == 5 && strcmp(argv[4], "--no-output") == 0) {
-        show_output = false;
-    }
-
-    std::ifstream csv_file;
-    csv_file.open(argv[1]);
-    if (!csv_file) {
+    FILE *heapfile = fopen(argv[1], "r+");
+    if (!heapfile) {
         std::cout << "Error, could not find file " << argv[1] << "\n";
         return 1;
     }
 
-    std::ofstream page_file;
-    page_file.open(argv[2]);
-    if (!page_file) {
+    std::ifstream csv_file;
+    csv_file.open(argv[2]);
+    if (!csv_file) {
         std::cout << "Error, could not find file " << argv[2] << "\n";
         return 1;
     }
 
     int page_size = atoi(argv[3]);
+
+    Heapfile *heap = new Heapfile();
+    heap->page_size = page_size;
+    heap->file_ptr = heapfile;
+
     int record_size = NUM_ATTRIBUTES * ATTRIBUTE_SIZE;
 
+    char *buf;
     Page page;
     init_fixed_len_page(&page, page_size, record_size);
-
-    int total_records = 0;
-    int total_pages = 0;
-
-    char* buf;
-
-    struct timeb t;
-    ftime(&t);
-    long start_time_in_ms = (t.time * 1000) + t.millitm;
 
     while (csv_file) {
         std::string line;
@@ -67,9 +56,6 @@ int main(int argc, char** argv) {
         int slot_index = add_fixed_len_page(&page, r);
 
         if (slot_index == -1) {  // page is full
-
-            total_pages++;
-
             int buf_size = page.page_size * record_size;
             buf = new char[buf_size];
 
@@ -78,8 +64,8 @@ int main(int argc, char** argv) {
                 fixed_len_write(&page_data->at(i), buf);
             }
 
-            // flush page to file
-            page_file << buf << std::flush;
+            PageID new_pid = alloc_page(heap);
+            write_page(&page, heap, new_pid);
 
             // allocate empty page
             init_fixed_len_page(&page, page_size, record_size);
@@ -88,37 +74,23 @@ int main(int argc, char** argv) {
         }
 
         write_fixed_len_page(&page, slot_index, r);
-
-        total_records++;
     }
+
     // write last page to file if it has records
     if (page.used_slots > 0) {
-        total_pages++;
-
-        // write page to page_file
         int buf_size = page.page_size * record_size;
         buf = new char[buf_size];
+
         std::vector<Record> *page_data = page.data;
         for (int i = 0; i < fixed_len_page_capacity(&page); i++) {
-            if (!page_data->at(i).empty()) {
-                fixed_len_write(&(page_data->at(i)), buf);
-            }
+            fixed_len_write(&page_data->at(i), buf);
         }
 
-        // flush page to file
-        page_file << buf << std::flush;
+        PageID new_pid = alloc_page(heap);
+        write_page(&page, heap, new_pid);
     }
-
-    ftime(&t);
-    long total_run_time = ((t.time * 1000) + t.millitm) - start_time_in_ms;
 
     csv_file.close();
-    page_file.close();
-
-    if (show_output) {
-        std::cout << "NUMBER OF RECORDS: " << total_records << "\n";
-        std::cout << "NUMBER OF PAGES: " << total_pages << "\n";
-        std::cout << "TOTAL TIME: " << total_run_time << " milliseconds\n";
-    }
+    fclose(heapfile);
     return 0;
 }
