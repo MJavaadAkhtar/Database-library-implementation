@@ -2,6 +2,7 @@
 #define __LIBRARY_H_INCLUDED__
 
 #include <vector>
+#include <stdio.h>
 
 
 typedef const char* V;
