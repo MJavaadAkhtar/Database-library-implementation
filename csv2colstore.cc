@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         init_heapfile(heap, page_size, column_heapfile);
         init_fixed_len_page(&page, page_size, record_size);
 
-        int j = 0;
+        unsigned int j = 0;
         while(j<all_records->size()){
             col_record->push_back(all_records->at(j).at(i));
 
