@@ -11,31 +11,33 @@
 int main(int argc, char** argv) {
     if (argc < 4) {
         std::cout << "Error, usage must be:\n";
-        std::cout << "./csv2colstore <csv_file> <colstore_name> <page_size>\n";
+        std::cout << "./csv2colstore <file_csv> <colstore_name> <size_page>\n";
         return 1;
     }
 
-    bool show_output = true;
+    bool output_show = true;
     if (argc == 5 && strcmp(argv[4], "--no-output") == 0) {
-        show_output = false;
+        output_show = false;
     }
 
-    std::ifstream csv_file;
-    csv_file.open(argv[1]);
-    if (!csv_file) {
+    
+
+    char *dir_col = argv[2];
+    if (mkdir(dir_col, 0700) != 0) {
+        std::cout << "Error, could not create directory " << dir_col << "\n";
+        return 1;
+    }
+    std::ifstream file_csv;
+    file_csv.open(argv[1]);
+    if (!file_csv)
+    {
         std::cout << "Error, could not find file " << argv[1] << "\n";
         return 1;
     }
 
-    char *colstore_directory = argv[2];
-    if (mkdir(colstore_directory, 0700) != 0) {
-        std::cout << "Error, could not create directory " << colstore_directory << "\n";
-        return 1;
-    }
+    int size_page = atoi(argv[3]);
 
-    int page_size = atoi(argv[3]);
-
-    int record_size = NUM_ATTRIBUTES * ATTRIBUTE_SIZE;
+    int record_size = 100 * 10;
 
     std::vector<Record> *all_records = new std::vector<Record>();
 
@@ -45,9 +47,9 @@ int main(int argc, char** argv) {
 
     int total_records = 0;
     // read csv into list of records
-    while (csv_file) {
+    while (file_csv) {
         std::string line;
-        csv_file >> line;
+        file_csv >> line;
 
         if (line.size() == 0) {
             // ignore empty lines
@@ -69,27 +71,27 @@ int main(int argc, char** argv) {
         total_records++;
     }
 
-    csv_file.close();
+    file_csv.close();
 
     // create column file for each attribute
-    for (int i = 0; i < NUM_ATTRIBUTES; ++i) {
+    for (int i = 0; i < 100; ++i) {
         // column file should be /{directory_path}/{column_index}
         std::ostringstream path_stream;
-        path_stream << colstore_directory << "/" << i;
+        path_stream << dir_col << "/" << i;
         std::string tmp = path_stream.str();
         const char* path = tmp.c_str();
 
-        FILE *column_heapfile = fopen(path, "w+");
-        if (!column_heapfile) {
+        FILE *heapFile_col = fopen(path, "w+");
+        if (!heapFile_col) {
             std::cout << "Error, could not open file " << path << " for column " << i << "\n";
             return 1;
         }
 
         Heapfile *heap = new Heapfile();
-        init_heapfile(heap, page_size, column_heapfile);
+        init_heapfile(heap, size_page, heapFile_col);
 
         Page page;
-        init_fixed_len_page(&page, page_size, record_size);
+        init_fixed_len_page(&page, size_page, record_size);
 
         Record *col_record = new Record();
         for (size_t j = 0; j < all_records->size(); ++j){
@@ -103,7 +105,7 @@ int main(int argc, char** argv) {
                     PageID pid = alloc_page(heap);
                     write_page(&page, heap, pid);
 
-                    init_fixed_len_page(&page, page_size, record_size);
+                    init_fixed_len_page(&page, size_page, record_size);
                     slot_index = add_fixed_len_page(&page, col_record);
                 }
 
@@ -119,14 +121,14 @@ int main(int argc, char** argv) {
 
         delete col_record;
         delete heap;
-        fclose(column_heapfile);
+        fclose(heapFile_col);
     }
 
     ftime(&t);
-    long total_run_time = ((t.time * 1000) + t.millitm) - start_time_in_ms;
+    long run_time = ((t.time * 1000) + t.millitm) - start_time_in_ms;
 
-    if (show_output) {
-        std::cout << "TOTAL TIME: " << total_run_time << " milliseconds\n";
+    if (output_show) {
+        std::cout << "TOTAL TIME: " << run_time << " milliseconds\n";
         std::cout << "NUMBER OF RECORDS: " << total_records << "\n";
     }
 
