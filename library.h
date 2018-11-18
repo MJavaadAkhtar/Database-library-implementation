@@ -33,6 +33,14 @@ typedef struct {
     int page_size;
 } Heapfile;
 
+class RecordIterator
+{
+  public:
+    RecordIterator(Heapfile *heapfile);
+    Record next();
+    bool hasNext();
+};
+
 const int NUM_ATTRIBUTES = 100;
 const int ATTRIBUTE_SIZE = 10;
 
@@ -68,12 +76,6 @@ void write_fixed_len_page(Page *page, int slot, Record *r);
 // Read a record from the page from a given slot.
 void read_fixed_len_page(Page *page, int slot, Record *r);
 
-class RecordIterator {
-    public:
-        RecordIterator(Heapfile *heapfile);
-        Record next();
-        bool hasNext();
-};
 
 // Returns max # of directory entries that can fit into one page
 int number_of_pages_per_directory_page(int page_size);

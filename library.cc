@@ -22,21 +22,6 @@ void fixed_len_write(Record *record, char *buf) {
     }
 }
 
-void fixed_len_read(char *buf, int size, Record *record) {
-    for (int i = 0; i < size/ATTRIBUTE_SIZE; ++i) {
-        char* attribute = new char[ATTRIBUTE_SIZE + 1];
-        int attribute_index = i * ATTRIBUTE_SIZE;
-        strncpy(attribute, buf + attribute_index, ATTRIBUTE_SIZE);
-
-        // not sure why garbage values are ending up in 'attribute'
-        attribute[ATTRIBUTE_SIZE] = '\0';
-
-        if (strlen(attribute) > 0) {
-            record->push_back(attribute);
-        }
-    }
-}
-
 void init_fixed_len_page(Page *page, int page_size, int slot_size) {
     page->page_size = page_size;
     page->slot_size = slot_size;
@@ -50,6 +35,21 @@ void init_fixed_len_page(Page *page, int page_size, int slot_size) {
         delete r;
     }
     page->data = data;
+}
+
+void read_fixed_len_page(Page *page, int slot, Record *r)
+{
+    *r = page->data->at(slot);
+}
+
+int number_of_pages_per_directory_page(int page_size)
+{
+    return (page_size - sizeof(int)) / sizeof(DirectoryEntry);
+}
+
+int get_directory_number(PageID pid, int page_size)
+{
+    return pid / (number_of_pages_per_directory_page(page_size) + 1);
 }
 
 int fixed_len_page_capacity(Page *page) {
@@ -72,6 +72,24 @@ int add_fixed_len_page(Page *page, Record *r) {
     return -1;
 }
 
+void fixed_len_read(char *buf, int size, Record *record)
+{
+    for (int i = 0; i < size / ATTRIBUTE_SIZE; ++i)
+    {
+        char *attribute = new char[ATTRIBUTE_SIZE + 1];
+        int attribute_index = i * ATTRIBUTE_SIZE;
+        strncpy(attribute, buf + attribute_index, ATTRIBUTE_SIZE);
+
+        // not sure why garbage values are ending up in 'attribute'
+        attribute[ATTRIBUTE_SIZE] = '\0';
+
+        if (strlen(attribute) > 0)
+        {
+            record->push_back(attribute);
+        }
+    }
+}
+
 void write_fixed_len_page(Page *page, int slot, Record *r) {
     // only increase count if prev is empty and new is not empty
     if (page->data->at(slot).empty() && !r->empty()) {
@@ -80,16 +98,24 @@ void write_fixed_len_page(Page *page, int slot, Record *r) {
     page->data->at(slot) = *r;
 }
 
-void read_fixed_len_page(Page *page, int slot, Record *r) {
-    *r = page->data->at(slot);
-}
+int get_offset_to_last_directory_page(FILE *file)
+{
+    fseek(file, 0, SEEK_SET);
+    int offset_to_next_directory_page = 0;
+    int total_offset_to_last_directory_page = 0;
 
-int number_of_pages_per_directory_page(int page_size) {
-    return (page_size - sizeof(int)) / sizeof(DirectoryEntry);
-}
+    while (offset_to_next_directory_page != 0)
+    {
+        // read offset, will be 0 if current direcory is the last in the file
+        fread(&offset_to_next_directory_page, sizeof(int), 1, file);
 
-int get_directory_number(PageID pid, int page_size) {
-    return pid / (number_of_pages_per_directory_page(page_size) + 1);
+        total_offset_to_last_directory_page += offset_to_next_directory_page;
+
+        // jump to next directory
+        fseek(file, total_offset_to_last_directory_page, SEEK_SET);
+    }
+
+    return total_offset_to_last_directory_page;
 }
 
 /*
@@ -144,23 +170,6 @@ void init_heapfile(Heapfile *heapfile, int page_size, FILE *file) {
     fflush(file);
 }
 
-int get_offset_to_last_directory_page(FILE *file) {
-    fseek(file, 0, SEEK_SET);
-    int offset_to_next_directory_page = 0;
-    int total_offset_to_last_directory_page = 0;
-
-    while (offset_to_next_directory_page != 0) {
-        // read offset, will be 0 if current direcory is the last in the file
-        fread(&offset_to_next_directory_page, sizeof(int), 1, file);
-
-        total_offset_to_last_directory_page += offset_to_next_directory_page;
-
-        // jump to next directory
-        fseek(file, total_offset_to_last_directory_page, SEEK_SET);
-    }
-
-    return total_offset_to_last_directory_page;
-}
 
 PageID alloc_page(Heapfile *heapfile) {
     int offset_to_last_directory = get_offset_to_last_directory_page(heapfile->file_ptr) * heapfile->page_size;

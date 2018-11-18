@@ -1,10 +1,12 @@
+
+#include <string.h>
+#include <sys/timeb.h>
+#include "library.h"
 #include <algorithm>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
-#include <string.h>
-#include <sys/timeb.h>
-#include "library.h"
+
 
 int main(int argc, char** argv) {
     if (argc < 4) {
@@ -13,46 +15,47 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    std::ifstream fileCsv;
+    fileCsv.open(argv[1]);
+
+    if (!fileCsv)
+    {
+        std::cout << "Error, could not find file " << argv[1] << "\n";
+        return 1;
+    }
+
     bool show_output = true;
     if (argc == 5 && strcmp(argv[4], "--no-output") == 0) {
         show_output = false;
     }
 
-    // open csv file
-    std::ifstream csv_file;
-    csv_file.open(argv[1]);
-    if (!csv_file) {
-        std::cout << "Error, could not find file " << argv[1] << "\n";
-        return 1;
-    }
-
     // initialize page
     int page_size = atoi(argv[3]);
-    int record_size = NUM_ATTRIBUTES * ATTRIBUTE_SIZE;
+    int record_size = 100 * 10;
 
     Page page;
     init_fixed_len_page(&page, page_size, record_size);
 
     // initialize heapfile
     Heapfile *heap = new Heapfile();
-    FILE* heap_file = fopen(argv[2], "w+b");
-    if (!heap_file) {
+    FILE* fileHeap = fopen(argv[2], "w+b");
+    if (!fileHeap) {
         std::cout << "Error, could not find file " << argv[2] << "\n";
         return 1;
     }
 
-    init_heapfile(heap, page_size, heap_file);
+    init_heapfile(heap, page_size, fileHeap);
 
     // timing and counting stuff
     struct timeb t;
     ftime(&t);
     long start_time_in_ms = (t.time * 1000) + t.millitm;
 
-    int total_records = 0;
-    while (csv_file) {
+    int Tots = 0;
+    while (fileCsv) {
 
         std::string line;
-        csv_file >> line;
+        fileCsv >> line;
 
         if (line.size() == 0) {
             // ignore empty lines
@@ -83,7 +86,7 @@ int main(int argc, char** argv) {
 
         write_fixed_len_page(&page, slot_index, r);
 
-        total_records++;
+        Tots++;
     }
 
     // write last page to file if it has records
@@ -96,11 +99,11 @@ int main(int argc, char** argv) {
     ftime(&t);
     long total_run_time = ((t.time * 1000) + t.millitm) - start_time_in_ms;
 
-    csv_file.close();
+    fileCsv.close();
 
     if (show_output) {
         std::cout << "RUN TIME: " << total_run_time << " milliseconds\n";
-        std::cout << "TOTAL RECORDS: " << total_records << "\n";
+        std::cout << "TOTAL RECORDS: " << Tots << "\n";
     }
     return 0;
 }

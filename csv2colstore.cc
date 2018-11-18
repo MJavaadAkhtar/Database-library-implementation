@@ -1,12 +1,13 @@
-#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/timeb.h>
 #include <sys/stat.h>
 #include "library.h"
+#include <algorithm>
+#include <stdlib.h>
+#include <string.h>
+
 
 int main(int argc, char** argv) {
     if (argc < 4) {

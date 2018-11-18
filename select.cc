@@ -19,15 +19,16 @@ int main(int argc, char** argv) {
 
     std::ofstream null_out("/dev/null");
 
-    FILE* heapfile = fopen(argv[1], "r");
-    if (!heapfile) {
-        std::cout << "Error, could not find file " << argv[1] << "\n";
+    int attribute_id = atoi(argv[2]);
+    if (attribute_id < 0 || attribute_id >= 100) {
+        std::cout << "Error, attribute_id is " << attribute_id << ", but must be between 0 and 99\n";
         return 1;
     }
 
-    int attribute_id = atoi(argv[2]);
-    if (attribute_id < 0 || attribute_id >= NUM_ATTRIBUTES) {
-        std::cout << "Error, attribute_id is " << attribute_id << ", but must be between 0 and 99\n";
+    FILE *heapfile = fopen(argv[1], "r");
+    if (!heapfile)
+    {
+        std::cout << "Error, could not find file " << argv[1] << "\n";
         return 1;
     }
 
@@ -46,9 +47,9 @@ int main(int argc, char** argv) {
     fread(&next_directory_offset, sizeof(int), 1, heapfile);
 
     int page_offset = 0 ;
-    int freespace = 0;
+    int freed_space = 0;
     int current_directory_position = 0;
-    int num_matching_records = 0;
+    int matching_record = 0;
 
     Page page;
 
@@ -59,8 +60,8 @@ int main(int argc, char** argv) {
     while (next_directory_offset != 0) {
         for (int i = 0; i < num_pages_in_directory; ++i) {
             fread(&page_offset, sizeof(int), 1, heapfile);
-            fread(&freespace, sizeof(int), 1, heapfile);
-            if (freespace != page_size) {
+            fread(&freed_space, sizeof(int), 1, heapfile);
+            if (freed_space != page_size) {
                 // jump to page
                 current_directory_position = ftell(heapfile);
 
@@ -74,7 +75,7 @@ int main(int argc, char** argv) {
                     }
 
                     if (strcmp(r.at(attribute_id), start) >= 0 && strcmp(r.at(attribute_id), end) <= 0) {
-                        num_matching_records++;
+                        matching_record++;
                         char *output_substring = new char[6];
                         strncpy(output_substring, r.at(attribute_id), 5);
                         output_substring[5] = '\0';
@@ -101,8 +102,8 @@ int main(int argc, char** argv) {
         fseek(heapfile, current_directory_position, SEEK_SET);
         for (int i = 0; i < num_pages_in_directory; ++i) {
             fread(&page_offset, sizeof(int), 1, heapfile);
-            fread(&freespace, sizeof(int), 1, heapfile);
-            if (freespace != page_size) {
+            fread(&freed_space, sizeof(int), 1, heapfile);
+            if (freed_space != page_size) {
                 // jump to page
                 current_directory_position = ftell(heapfile);
 
@@ -116,7 +117,7 @@ int main(int argc, char** argv) {
                     }
 
                     if (strncmp(r.at(attribute_id), start, 5) >= 0 && strncmp(r.at(attribute_id), end, 5) <= 0) {
-                        num_matching_records++;
+                        matching_record++;
                         char *output_substring = new char[6];
                         strncpy(output_substring, r.at(attribute_id), 5);
                         output_substring[5] = '\0';
@@ -143,7 +144,7 @@ int main(int argc, char** argv) {
     fclose(heapfile);
 
     std::cout << "TOTAL TIME: " << total_run_time << " milliseconds\n";
-    std::cout << "NUMBER OF MATCHING RECORDS: " << num_matching_records << "\n";
+    std::cout << "NUMBER OF MATCHING RECORDS: " << matching_record << "\n";
 
     delete heap;
     return 0;

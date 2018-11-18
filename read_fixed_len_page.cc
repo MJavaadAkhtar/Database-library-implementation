@@ -17,18 +17,20 @@ int main(int argc, char** argv) {
         show_output = false;
     }
 
-    std::ifstream page_file;
-    page_file.open(argv[1]);
-    if (!page_file) {
-        std::cout << "Error, could not find file " << argv[1] << "\n";
-        return 1;
-    }
 
     std::ofstream null_out("/dev/null");
 
     int page_size = atoi(argv[2]);
 
-    int record_size = NUM_ATTRIBUTES * ATTRIBUTE_SIZE;
+    int record_size = 100 * 10;
+
+    std::ifstream page_file;
+    page_file.open(argv[1]);
+    if (!page_file)
+    {
+        std::cout << "Error, could not find file " << argv[1] << "\n";
+        return 1;
+    }
 
     Page page;
 

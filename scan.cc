@@ -11,15 +11,14 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    FILE* heapfile = fopen(argv[1], "rb");
-    if (!heapfile) {
+    int page_size = atoi(argv[2]);
+
+    FILE *heapfile = fopen(argv[1], "rb");
+    if (!heapfile)
+    {
         std::cout << "Error, could not find file " << argv[1] << "\n";
         return 1;
     }
-
-    int page_size = atoi(argv[2]);
-
-    // std::ofstream null_out("/dev/null");
 
     Heapfile *heap = new Heapfile();
     heap->page_size = page_size;

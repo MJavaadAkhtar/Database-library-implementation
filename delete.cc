@@ -10,23 +10,24 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    FILE *heapfile = fopen(argv[1], "r+");
-    if (!heapfile) {
-        std::cout << "Error, could not find file " << argv[1] << "\n";
-        return 1;
-    }
-
-    std::string serialized_record_id = argv[2];
-    size_t delimiter_position = serialized_record_id.find(RID_DELIMITER);
-    if (delimiter_position == 0 || delimiter_position == serialized_record_id.length() - 1) {
+    std::string serial_record = argv[2];
+    size_t pos_del = serial_record.find(RID_DELIMITER);
+    if (pos_del == 0 || pos_del == serial_record.length() - 1) {
         std::cout << "Error, record_id must be:\n";
         std::cout << "<page_id>%<slot_number>\n";
         return 1;
     }
 
     RecordID *rid = new RecordID();
-    rid->page_id = atoi(serialized_record_id.substr(0, delimiter_position).c_str());
-    rid->slot = atoi(serialized_record_id.substr(delimiter_position + 1).c_str());
+    rid->page_id = atoi(serial_record.substr(0, pos_del).c_str());
+    rid->slot = atoi(serial_record.substr(pos_del + 1).c_str());
+
+    FILE *heapfile = fopen(argv[1], "r+");
+    if (!heapfile)
+    {
+        std::cout << "Error, could not find file " << argv[1] << "\n";
+        return 1;
+    }
 
     int page_size = atoi(argv[3]);
 
