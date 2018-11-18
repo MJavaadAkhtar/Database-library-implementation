@@ -1,4 +1,4 @@
-CC = g++
+CC = g++ -std=c++11
 
 library.o: library.cc library.h
 	$(CC) -g -Wall -o $@ -c $<
@@ -44,4 +44,4 @@ test_heapfile: test_heapfile.cc library.o
 all: csv2heapfile csv2colstore scan insert update delete select select2 select3 write_fixed_len_pages read_fixed_len_page
 
 clean:
-	rm *.o csv2heapfile csv2colstore scan insert update delete select select2 select3 write_fixed_len_pages read_fixed_len_page
+	rm -rf *.o csv2heapfile csv2colstore scan insert update delete select select2 select3 write_fixed_len_pages read_fixed_len_page *.dSYM
